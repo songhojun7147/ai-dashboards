@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>항로·연료 AI 예측</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f2f4f7; --card:#fff; --ink:#152033; --sub:#5a6577; --line:#e2e6ec; --track:#edf0f4;
+  --navy:#0c2340; --blue:#2a6fd6; --purple:#7b4fd6; --green:#16915a; --orange:#e07b16; --red:#d23b3b; --gray:#8a93a3;
+  --blue-w:#e9f1fd; --purple-w:#f2edfc; --green-w:#e6f5ed; --orange-w:#fdf1e4;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;font-size:16px;line-height:1.5}
+header{background:var(--navy);color:#fff;padding:18px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+header h1{margin:0;font-size:26px}
+header .tag{font-size:14px;opacity:.85}
+header .demo{margin-left:auto;background:#fff;color:var(--navy);text-decoration:none;font-weight:700;padding:8px 14px;border-radius:8px;font-size:15px}
+main{max-width:1280px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.card h2{margin:0 0 4px;font-size:19px}
+.card .d{margin:0 0 14px;color:var(--sub);font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-top:5px solid var(--c)}
+.kpi small{color:var(--sub);font-size:14px;display:block}
+.kpi b{font-size:34px;display:block;margin:4px 0 2px;color:var(--c)}
+.kpi span{font-size:14px;color:var(--sub)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.step{flex:1 1 150px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--w);border-top:5px solid var(--c)}
+.step .n{font-size:13px;color:var(--sub)}
+.step b{display:block;font-size:17px;margin:2px 0}
+.step .m{font-size:14px}
+.chip{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;color:#fff;background:var(--c);margin-top:6px}
+.arr{align-self:center;color:var(--gray);font-size:22px}
+
+/* 시간 분할 */
+.split{display:flex;height:40px;border-radius:8px;overflow:hidden;font-size:15px;font-weight:700;color:#fff}
+.split div{display:flex;align-items:center;justify-content:center}
+.split-lbl{display:flex;justify-content:space-between;color:var(--sub);font-size:13px;margin-top:6px}
+
+/* 막대 */
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tabs button{font:inherit;font-size:14px;border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 12px;cursor:pointer;color:var(--ink)}
+.tabs button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:200px 1fr 80px;align-items:center;gap:10px;font-size:15px}
+.bar .t{height:26px;background:var(--track);border-radius:6px;overflow:hidden}
+.bar .f{display:block;height:100%;border-radius:6px;background:var(--gray);transition:width .4s}
+.bar.best .f{background:var(--green)}
+.bar.best .l,.bar.best .v{font-weight:700;color:var(--green)}
+.bar.base .f{background:var(--blue)}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums}
+.note{margin-top:12px;padding:10px 12px;background:var(--blue-w);border-radius:8px;font-size:15px}
+.note.warn{background:var(--orange-w)}
+
+/* 경로 */
+.route{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.via{border:1px solid var(--line);border-radius:10px;padding:14px;border-left:5px solid var(--c)}
+.via b{font-size:17px}
+.via p{margin:4px 0 0;font-size:14px;color:var(--sub)}
+.rules{display:grid;gap:8px;margin-top:12px}
+.rule{display:flex;gap:10px;align-items:flex-start;font-size:15px;background:#f7f8fa;border-radius:8px;padding:9px 12px}
+.rule i{font-style:normal;font-weight:700;color:var(--c);white-space:nowrap}
+
+ul.clean{margin:0;padding-left:20px}
+ul.clean li{margin:4px 0}
+.lesson{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.lesson div{background:var(--purple-w);border-radius:10px;padding:14px;font-size:15px}
+.lesson b{display:block;font-size:17px;margin-bottom:4px;color:var(--purple)}
+footer{text-align:center;color:var(--sub);font-size:13px;padding-bottom:20px}
+
+@media (max-width:900px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .two,.lesson,.route{grid-template-columns:1fr}
+  .arr{display:none}
+  .bar{grid-template-columns:120px 1fr 64px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧭 항로·연료 AI 예측 — GAS IVORY</h1>
+  <span class="tag">VLGC · LPG 이중연료 · Noon Report 1,022일 학습</span>
+  <span class="demo">항차 계획 앱 시연은 현장 PC에서</span>
+</header>
+
+<main>
+  <section class="kpis">
+    <div class="kpi" style="--c:var(--blue)"><small>학습 데이터 (항해일)</small><b>1,022일</b><span>Noon Report 정리 후</span></div>
+    <div class="kpi" style="--c:var(--purple)"><small>비교한 모델</small><b>5개</b><span>평균 · 선형 · RF · XGBoost · 신경망</span></div>
+    <div class="kpi" style="--c:var(--green)"><small>하루 연료비 예측 오차 (최고)</small><b>$1,596</b><span>신경망 MLP · 평균 방식 $1,636</span></div>
+    <div class="kpi" style="--c:var(--orange)"><small>속도 예측 오차 (최고)</small><b>0.94 kn</b><span>신경망 MLP · 평균 방식 1.15 kn</span></div>
+  </section>
+
+  <section class="card">
+    <h2>AI 구성 — 데이터에서 항차 계획까지</h2>
+    <p class="d">머신러닝·딥러닝 예측 + 항로·기상 규칙</p>
+    <div class="flow">
+      <div class="step" style="--c:var(--gray);--w:#f6f7f9"><span class="n">입력</span><b>📄 Noon Report</b><span class="m">하루 1회 운항 보고 · 오류 행 제거</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--blue);--w:var(--blue-w)"><span class="n">① 특징</span><b>RPM · 모드 · 계절</b><span class="m">M/E RPM, LPG/FO 모드, 월</span><br><span class="chip">전처리</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--purple);--w:var(--purple-w)"><span class="n">② 예측 모델</span><b>ML 4종 + 딥러닝</b><span class="m">하루 LPG·FO·MGO·속도</span><br><span class="chip">지도학습 · 회귀</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--green);--w:var(--green-w)"><span class="n">③ 항로</span><b>파나마 / 희망봉</b><span class="m">거리·일수·통행료·용선료</span><br><span class="chip">경로 계산</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--orange);--w:var(--orange-w)"><span class="n">④ 기상·규칙</span><b>BF 6↑ → FO ONLY</b><span class="m">16일 해상 예보 · ECA · 벙커항 추천</span><br><span class="chip">규칙 기반</span></div>
+    </div>
+  </section>
+
+  <section class="two">
+    <div class="card">
+      <h2>모델 성능 비교 (시험 300일)</h2>
+      <p class="d">오차 = 실제와 예측의 평균 차이 · <b>짧을수록 좋음</b></p>
+      <div class="tabs" id="tabs">
+        <button data-k="cost" aria-pressed="true">하루 연료비 ($)</button>
+        <button data-k="tot" aria-pressed="false">하루 총소모량 (MT)</button>
+        <button data-k="spd" aria-pressed="false">속도 (kn)</button>
+      </div>
+      <div class="bars" id="bars"></div>
+      <div class="note warn" id="msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>공정한 시험 — 시간 순서로 나누기</h2>
+      <p class="d">과거로 학습하고, 모델이 본 적 없는 최근 1년으로 시험</p>
+      <div class="split">
+        <div style="flex:722;background:var(--blue)">학습 722일</div>
+        <div style="flex:300;background:var(--orange)">시험 300일</div>
+      </div>
+      <div class="split-lbl"><span>과거</span><span>2025-10-01 기준</span><span>최근</span></div>
+      <div class="note" style="margin-top:16px">무작위로 섞어 나누면 <b>미래를 미리 보는</b> 셈이 되어 점수가 부풀려짐.<br>실제 사용(다음 항차 예측)과 같은 조건으로 시험함.</div>
+      <h2 style="margin-top:18px">모델별 특징</h2>
+      <ul class="clean">
+        <li><b>평균</b> — 기존 방식, 비교 기준선</li>
+        <li><b>선형회귀</b> — RPM³ 물리 공식 기반</li>
+        <li><b>랜덤포레스트 · XGBoost</b> — 결정트리 앙상블</li>
+        <li><b>신경망 MLP</b> — PyTorch 딥러닝</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>항로 판단 — 예측을 실제 결정에 연결</h2>
+    <p class="d">Loading → Discharging 항구를 고르면 두 경로의 총비용을 비교해 추천</p>
+    <div class="route">
+      <div class="via" style="--c:var(--blue)"><b>🛳 파나마 운하 → 태평양</b><p>거리 짧음 · 통행료 발생<br>연료비 + 통행료 + 용선료로 비교</p></div>
+      <div class="via" style="--c:var(--green)"><b>🌍 희망봉 경유</b><p>통행료 없음 · 거리·일수 증가<br>남반구 겨울(6~8월) 폭풍 해역</p></div>
+    </div>
+    <div class="rules">
+      <div class="rule" style="--c:var(--red)"><i>BF 6 이상</i><span>풍속 22kn↑ 해역은 LPG 운항 불가 → <b>FO ONLY</b>로 연료 계산</span></div>
+      <div class="rule" style="--c:var(--blue)"><i>해상 예보</i><span>항로를 200nm 지점으로 나눠 16일 예보 조회 (좌표만 전송, 회사 데이터 미전송)</span></div>
+      <div class="rule" style="--c:var(--orange)"><i>ECA 해역</i><span>배출규제해역 구간은 MGO 사용량 따로 계산</span></div>
+      <div class="rule" style="--c:var(--green)"><i>벙커 계획</i><span>ROB 부족하면 항로 근처(우회 400nm 이내) 벙커 항구 추천</span></div>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div><b>① 기준선과 꼭 비교</b>총소모량은 단순 평균이 가장 정확 — AI가 항상 이기지는 않음</div>
+    <div><b>② 목적에 맞는 지표</b>비용·속도는 신경망이 최고 → 항차 계획엔 비용 기준으로 선택</div>
+    <div><b>③ 데이터 양의 한계</b>1,022일은 딥러닝에 적은 편 — 기상·흘수 데이터 추가가 다음 단계</div>
+  </section>
+</main>
+<footer>지표 출처: GTIV_연료정산 학습 결과 (2026-10-14) · 연료 단가·계절 위험값은 대략적 추정치</footer>
+
+<script>
+const R = [
+  { m: '평균 (기존 방식)',  cost: 1636.5, tot: 2.36, spd: 1.15, base: true },
+  { m: '선형회귀 (물리 기반)', cost: 1796.3, tot: 4.24, spd: 1.00 },
+  { m: '랜덤포레스트',       cost: 1669.4, tot: 2.56, spd: 0.97 },
+  { m: 'XGBoost',          cost: 1754.8, tot: 2.60, spd: 1.03 },
+  { m: '신경망 MLP',        cost: 1596.0, tot: 2.79, spd: 0.94 },
+];
+const MSG = {
+  cost: '<b>신경망 MLP</b>가 가장 정확 — 평균 방식보다 하루 약 $40 오차 감소. 앱의 기본 모델로 사용.',
+  tot:  '<b>정직한 결과:</b> 총소모량은 단순 평균이 가장 정확. 물리 공식(선형)은 오히려 가장 나쁨.',
+  spd:  '<b>신경망 MLP</b>가 가장 정확 — 평균 방식 대비 오차 18% 감소.',
+};
+const fmt = (k, v) => k === 'cost' ? '$' + Math.round(v).toLocaleString() : v.toFixed(2);
+function draw(k) {
+  const max = Math.max(...R.map(r => r[k])), best = Math.min(...R.map(r => r[k]));
+  const box = document.getElementById('bars');
+  box.innerHTML = '';
+  for (const r of R) {
+    const row = document.createElement('div');
+    row.className = 'bar' + (r[k] === best ? ' best' : r.base ? ' base' : '');
+    row.innerHTML = `<span class="l">${r.m}${r[k] === best ? ' ★' : ''}</span><span class="t"><span class="f" style="width:${(r[k] / max * 100).toFixed(1)}%"></span></span><span class="v">${fmt(k, r[k])}</span>`;
+    box.append(row);
+  }
+  document.getElementById('msg').innerHTML = MSG[k];
+  for (const b of document.querySelectorAll('#tabs button')) b.setAttribute('aria-pressed', b.dataset.k === k);
+}
+document.getElementById('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) draw(b.dataset.k); });
+draw('cost');
+</script>
+</body>
+</html>

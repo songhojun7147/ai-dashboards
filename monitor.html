@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>위험작업 모니터링</title>
+<style>
+:root{
+  --bg:#f3f5f9;--card:#fff;--ink:#1c2333;--muted:#5b6578;--line:#dce1ea;
+  --blue:#1f5fbf;--green:#1e8a4c;--greenbg:#e7f5ec;--amber:#b86e00;--amberbg:#fff3dc;
+  --red:#cf2b2b;--redbg:#fdeaea;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Malgun Gothic","맑은 고딕",system-ui,sans-serif}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px}
+button:hover{filter:brightness(.96)}
+button.pri{background:var(--blue);color:#fff;border-color:var(--blue)}
+button.danger{background:var(--red);color:#fff;border-color:var(--red);font-weight:700}
+button.ok{background:var(--green);color:#fff;border-color:var(--green)}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;width:100%;background:#fff;color:var(--ink)}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+
+header{background:#fff;border-bottom:1px solid var(--line);padding:12px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+header h1{font-size:22px;margin:0}
+#ship{font-weight:700;border:none;border-bottom:1px dashed var(--line);border-radius:0;width:200px;padding:4px}
+#clock{font-size:20px;font-weight:700;margin-left:auto;font-variant-numeric:tabular-nums}
+
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 20px 0}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.kpi .n{font-size:32px;font-weight:800;line-height:1.1}
+.kpi .l{color:var(--muted);font-size:14px}
+.kpi.warn{background:var(--amberbg);border-color:#f0c977}.kpi.warn .n{color:var(--amber)}
+.kpi.bad{background:var(--redbg);border-color:#f2a3a3}.kpi.bad .n{color:var(--red)}
+
+main{display:grid;grid-template-columns:minmax(320px,5fr) 7fr;gap:16px;padding:16px 20px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.panel h2{font-size:17px;margin:0 0 10px}
+#map svg{width:100%;height:auto;display:block}
+.zone{stroke:#9aa6b8;stroke-width:1.2}
+.zone.blink{animation:blink 1s infinite}
+@keyframes blink{50%{fill:#ffb3b3}}
+.typecount{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.typecount span{border-radius:20px;padding:3px 10px;font-size:14px;color:#fff}
+
+#cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+.card{background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px}
+.card.overdue{border-color:#f0b54a;background:#fffbf2}
+.chip{border-radius:8px;padding:6px 10px;margin:0 0 8px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:10px}
+.chip.work{background:#eef3fb;color:var(--blue)}
+.chip.due{background:var(--red);color:#fff;animation:pulse 1.2s infinite}
+.chip.rest{background:var(--greenbg);color:var(--green)}
+.chip .bar{flex:1;min-width:40px;height:6px;background:rgba(0,0,0,.1);border-radius:3px;overflow:hidden}
+.chip .bar i{display:block;height:100%;background:currentColor}
+.chip button{padding:3px 10px;font-size:13px;color:var(--ink)}
+.card.accident{border-color:var(--red);background:var(--redbg);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 5px rgba(207,43,43,.25)}}
+.ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{color:#fff;font-weight:700;border-radius:6px;padding:2px 8px;font-size:14px}
+.pill{margin-left:auto;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:700}
+.pill.ok{background:var(--greenbg);color:var(--green)}
+.pill.overdue{background:var(--amberbg);color:var(--amber)}
+.pill.accident{background:var(--red);color:#fff}
+.sub{color:var(--muted);font-size:14px;margin-top:4px}
+.people{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.pp{background:#eef2f8;border-radius:8px;padding:3px 9px;font-size:14px}
+.pp small{color:var(--muted);margin-left:4px}
+.pp.inj{background:var(--red);color:#fff}.pp.inj small{color:#ffe0e0}
+.times{display:flex;justify-content:space-between;font-size:14px;gap:8px;flex-wrap:wrap}
+.due-late{color:var(--amber);font-weight:700}
+.btns{display:flex;gap:6px;margin-top:10px}
+.btns button{flex:1;padding:8px 6px}
+.empty{color:var(--muted);text-align:center;padding:40px 0}
+
+#logbox{padding:0 20px 24px}
+#log{max-height:260px;overflow:auto;font-size:14px}
+#log div{padding:5px 0;border-bottom:1px solid #eef0f4}
+#log .t{color:var(--muted);margin-right:8px;font-variant-numeric:tabular-nums}
+#log .warn{color:var(--amber)}#log .bad{color:var(--red);font-weight:700}
+
+.modal-bg{position:fixed;inset:0;background:rgba(20,28,40,.45);display:none;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto;z-index:20}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:14px;padding:20px 22px;width:100%;max-width:560px}
+.modal h3{margin:0 0 6px;font-size:20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.hint{font-size:13px;color:var(--muted)}
+.chk{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:16px;color:var(--ink)}
+.chk input{width:20px;height:20px}
+
+#alarm{position:fixed;inset:0;background:rgba(120,0,0,.55);display:none;z-index:30;overflow:auto;padding:24px 12px}
+#alarm.show{display:block}
+.abox{background:#fff;border:4px solid var(--red);border-radius:14px;max-width:880px;margin:0 auto 16px;overflow:hidden}
+.ahead{background:var(--red);color:#fff;padding:14px 20px}
+.ahead .big{font-size:26px;font-weight:800}
+.abody{padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.abody h4{margin:0 0 6px}
+.step{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #f0f0f0}
+.step input{width:22px;height:22px;flex:none;margin-top:2px}
+.step.done span{color:var(--muted);text-decoration:line-through}
+.step small{color:var(--green);margin-left:6px;text-decoration:none}
+.afoot{display:flex;gap:8px;justify-content:flex-end;padding:0 20px 16px}
+#alarmbar{display:none;position:sticky;top:0;z-index:15;background:var(--red);color:#fff;padding:10px 20px;font-weight:700;align-items:center;gap:12px}
+#alarmbar.show{display:flex}
+#alarmbar button{margin-left:auto}
+
+@media (max-width:900px){
+  main{grid-template-columns:1fr}
+  .summary{grid-template-columns:repeat(2,1fr)}
+  .abody{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="alarmbar"><span id="alarmbarText"></span><button onclick="showAlarm(true)">사고 대응 화면 열기</button></div>
+
+<header>
+  <h1>⚓ 위험작업 모니터링</h1>
+  <input id="ship" title="선박명 (클릭해서 수정)">
+  <span id="clock"></span>
+  <button class="pri" onclick="openForm()">＋ 작업 등록</button>
+  <button onclick="loadSample()">예시 데이터</button>
+</header>
+
+<section class="summary">
+  <div class="kpi"><div class="n" id="kWorks">0</div><div class="l">진행 중 위험작업</div></div>
+  <div class="kpi"><div class="n" id="kPeople">0</div><div class="l">투입 인원 (명)</div></div>
+  <div class="kpi" id="kOverBox"><div class="n" id="kOver">0</div><div class="l">점검 지연</div></div>
+  <div class="kpi" id="kAccBox"><div class="n" id="kAcc">0</div><div class="l">사고 진행 중</div></div>
+</section>
+
+<main>
+  <div class="panel" id="map">
+    <h2>선내 위치별 배치 현황</h2>
+    <div id="mapSvg"></div>
+    <div class="typecount" id="typeCount"></div>
+    <p class="hint">숫자 = 해당 구역 투입 인원 · 노랑 = 점검 지연 · 빨강 깜빡임 = 사고</p>
+  </div>
+  <div class="panel">
+    <h2>작업별 현황</h2>
+    <div id="cards"></div>
+  </div>
+</main>
+
+<section id="logbox">
+  <div class="panel">
+    <h2>작업·사고 기록</h2>
+    <div id="log"></div>
+  </div>
+</section>
+
+<!-- 작업 등록 -->
+<div class="modal-bg" id="formBg">
+  <div class="modal">
+    <h3>위험작업 등록</h3>
+    <div class="grid2">
+      <div><label>작업 종류</label><select id="fType" onchange="onTypeChange()"></select></div>
+      <div><label>작업 구역</label><select id="fZone"></select></div>
+      <div><label>상세 위치</label><input id="fSpot" placeholder="예: 좌현 No.2 윈치"></div>
+      <div><label>PTW(작업허가) 번호</label><input id="fPtw" placeholder="예: PTW-1014-03"></div>
+      <div><label>현장 감독자</label><input id="fSup" placeholder="예: 김일항 / 1항사"></div>
+      <div><label>연락 수단</label><input id="fTel" placeholder="예: 무전 CH 6"></div>
+      <div><label>점검(교신) 주기 (분)</label><input id="fInt" type="number" min="1" value="15"></div>
+      <div><label>예상 종료 시각</label><input id="fEnd" type="time"></div>
+    </div>
+    <label>작업자 명단 (한 줄에 한 명: 이름, 직책)</label>
+    <textarea id="fWorkers" rows="5" placeholder="홍길동, 갑판장&#10;이선원, AB&#10;박감시, 입구 감시자"></textarea>
+    <p class="hint" id="fHaz"></p>
+    <div class="mbtns"><button onclick="closeModal('formBg')">취소</button><button class="pri" onclick="saveForm()">작업 시작</button></div>
+  </div>
+</div>
+
+<!-- 사고 발령 -->
+<div class="modal-bg" id="accBg">
+  <div class="modal">
+    <h3 style="color:var(--red)">🚨 사고 경보 발령</h3>
+    <div id="accInfo" class="sub"></div>
+    <label>부상자 / 관련 인원 선택</label>
+    <div id="accWorkers"></div>
+    <label>상황 메모 (선택)</label>
+    <input id="accMemo" placeholder="예: 스냅백으로 다리 타격, 의식 있음">
+    <div class="mbtns"><button onclick="closeModal('accBg')">취소</button><button class="danger" onclick="fireAccident()">경보 발령</button></div>
+  </div>
+</div>
+
+<!-- 사고 대응 화면 -->
+<div id="alarm"><div id="alarmList"></div></div>
+
+<script>
+const TYPES={
+  MOORING:{name:'MOORING (계류)',color:'#1f5fbf',interval:10,hazards:'스냅백(로프 파단 반동), 윈치·드럼 협착, 미끄러짐',
+    guide:['윈치·양묘기 즉시 정지, 로프 장력 해제','브릿지(당직사관)에 무전 보고 — 주기관·추진 사용 중지 요청','스냅백 구역 밖으로 다른 인원 대피','부상자 접근 전 로프·장력 상태 확인','의식·호흡·출혈 확인 후 응급처치, 들것 이송','필요 시 무선의료자문(TMAS) 요청']},
+  CHIPPING:{name:'CHIPPING (치핑)',color:'#7a4fc2',interval:30,hazards:'비산물 눈 부상, 소음·분진, 진동, 고소 시 추락',
+    guide:['에어/전동 공구 즉시 정지, 공급 차단','눈 이물질: 비비지 말고 깨끗한 물로 15분 이상 세척','깊이 박힌 이물질은 빼지 말고 양쪽 눈을 덮은 뒤 이송','출혈 시 직접 압박 지혈','브릿지 보고, 의무실 이송','TMAS 요청 여부 판단']},
+  ENCLOSED:{name:'밀폐구역 진입',color:'#b3261e',interval:10,hazards:'산소결핍, 유독가스(H₂S 등), 가연성 가스',
+    guide:['입구 감시자는 절대 단독으로 구조 진입 금지','비상경보 발령, 브릿지 보고, 구조팀 소집','구조팀은 SCBA(공기호흡기) 착용 후 진입','강제 환기 유지, 가스 측정 계속','구조 후 산소 투여, CPR 준비','TMAS 요청']},
+  HOTWORK:{name:'화기작업 (용접·절단)',color:'#d35400',interval:15,hazards:'화재, 폭발, 화상, 흄',
+    guide:['작업 즉시 중지, 가스·전원 차단','화재감시자 초기 소화','화재경보 발령, 브릿지 보고','화상 부위 흐르는 물로 10~20분 냉각','인접 구역(격벽 반대편) 열 전달 확인','의무실 이송, TMAS 판단']},
+  ALOFT:{name:'고소·선외 작업',color:'#0f8a8a',interval:15,hazards:'추락, 낙하물, 선외 추락(MOB)',
+    guide:['작업 중지, 낙하물 구역 통제','추락자를 함부로 움직이지 말 것 (척추 손상 의심)','선외 추락 시: MOB 경보 + 구명부환 투하 + 위치 표시','의식·호흡·출혈 확인','척추고정 들것으로 이송, 브릿지 보고','TMAS 요청']},
+  LIFTING:{name:'크레인·중량물',color:'#5d6b2f',interval:15,hazards:'하물 낙하, 협착, 와이어 파단',
+    guide:['크레인 즉시 정지, 하물 고정','하물 아래·스윙 반경 인원 대피','브릿지 보고','협착 시 하물을 안정시킨 뒤 구조','응급처치, 들것 이송']},
+  ELECTRIC:{name:'전기작업',color:'#8a6d00',interval:20,hazards:'감전, 아크 화상',
+    guide:['전원 차단 전 부상자 접촉 금지','차단기 개방·잠금(LOTO) 확인','호흡·맥박 확인, 필요 시 CPR/AED','화상 냉각, 브릿지 보고','TMAS 요청']},
+  OTHER:{name:'기타 위험작업',color:'#56627a',interval:30,hazards:'작업 특성에 따라 다름',
+    guide:['작업 즉시 중지, 위험원 차단','브릿지 보고, 비상경보 판단','현장 2차 위험 확인 후 접근','응급처치, 들것 이송','TMAS 요청 여부 판단']}
+};
+const ZONES=[
+  {id:'AFT',name:'선미 계류갑판',x:30,y:60,w:90,h:140},
+  {id:'ACC',name:'거주구역',x:130,y:75,w:80,h:110},
+  {id:'ER',name:'기관실',x:220,y:75,w:85,h:110},
+  {id:'PUMP',name:'펌프룸',x:315,y:75,w:55,h:110},
+  {id:'MAIN',name:'메인데크·화물구역',x:380,y:55,w:220,h:150},
+  {id:'FWD',name:'선수 계류갑판',x:612,y:75,w:105,h:110},
+  {id:'OUT',name:'선외·현측',x:380,y:8,w:220,h:30}
+];
+const zoneName=id=>(ZONES.find(z=>z.id===id)||{name:id}).name;
+
+const KEY='hazwork_monitor_v1';
+let S=load(), muted=false, alarmOpen=true, accTarget=null, lastSig='';
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.works))return s;}catch(e){}return{ship:'MV OCEAN STAR',works:[],log:[]};}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const uid=()=>Math.random().toString(36).slice(2,10);
+const now=()=>Date.now();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hhmm=t=>new Date(t).toTimeString().slice(0,5);
+function dur(ms){ms=Math.max(0,ms);const m=Math.floor(ms/60000),h=Math.floor(m/60);return h?`${h}시간 ${m%60}분`:`${m}분`;}
+function addLog(level,msg){S.log.unshift({t:now(),level,msg});S.log=S.log.slice(0,500);}
+
+const active=()=>S.works.filter(w=>w.state==='active');
+function status(w){
+  if(w.accident&&!w.accident.resolved)return'accident';
+  if(now()-w.lastCheck>w.interval*60000)return'overdue';
+  return'ok';
+}
+const ST_LABEL={ok:'정상',overdue:'점검 지연',accident:'사고'};
+
+/* ---------- 렌더 ---------- */
+function render(){
+  document.getElementById('ship').value=S.ship;
+  const A=active();
+  const people=A.reduce((n,w)=>n+w.workers.length,0);
+  const over=A.filter(w=>status(w)==='overdue').length;
+  const acc=A.filter(w=>status(w)==='accident').length;
+  kWorks.textContent=A.length;kPeople.textContent=people;kOver.textContent=over;kAcc.textContent=acc;
+  kOverBox.className='kpi'+(over?' warn':'');kAccBox.className='kpi'+(acc?' bad':'');
+  renderMap(A);renderCards(A);renderLog();renderAlarm();
+  lastSig=sig();tick();
+}
+function renderMap(A){
+  let s=`<svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg">
+  <path d="M60,45 L630,45 Q790,125 630,205 L60,205 Q20,205 20,170 L20,80 Q20,45 60,45Z" fill="#f7f9fc" stroke="#7f8ca3" stroke-width="2"/>
+  <text x="770" y="222" font-size="12" fill="#5b6578" text-anchor="end">선수(BOW) ▶</text>
+  <text x="22" y="222" font-size="12" fill="#5b6578">◀ 선미(STERN)</text>`;
+  ZONES.forEach(z=>{
+    const ws=A.filter(w=>w.zone===z.id);
+    const n=ws.reduce((k,w)=>k+w.workers.length,0);
+    const sts=ws.map(status);
+    let fill='#eef1f6',cls='zone';
+    if(ws.length)fill='#d6e5fb';
+    if(sts.includes('overdue'))fill='#ffe3a8';
+    if(sts.includes('accident')){fill='#ff8a8a';cls+=' blink';}
+    s+=`<rect class="${cls}" x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="6" fill="${fill}"/>
+    <text x="${z.x+z.w/2}" y="${z.id==='OUT'?z.y+20:z.y+18}" font-size="12" text-anchor="middle" fill="#1c2333">${z.name}</text>`;
+    if(n){
+      const cx=z.id==='OUT'?z.x+z.w-18:z.x+z.w/2, cy=z.id==='OUT'?z.y+15:z.y+z.h/2+10;
+      const col=sts.includes('accident')?'#cf2b2b':sts.includes('overdue')?'#b86e00':'#1f5fbf';
+      s+=`<circle cx="${cx}" cy="${cy}" r="${z.id==='OUT'?12:20}" fill="${col}"/>
+      <text x="${cx}" y="${cy+(z.id==='OUT'?4:6)}" font-size="${z.id==='OUT'?12:17}" font-weight="700" text-anchor="middle" fill="#fff">${n}</text>`;
+    }
+  });
+  mapSvg.innerHTML=s+'</svg>';
+  const by={};A.forEach(w=>{by[w.type]=(by[w.type]||0)+w.workers.length;});
+  typeCount.innerHTML=Object.keys(by).map(t=>`<span style="background:${TYPES[t].color}">${TYPES[t].name} ${by[t]}명</span>`).join('')||'<span style="background:#9aa6b8">진행 중인 작업 없음</span>';
+}
+function renderCards(A){
+  if(!A.length){cards.innerHTML='<div class="empty">진행 중인 위험작업이 없습니다.<br>[＋ 작업 등록] 또는 [예시 데이터]를 눌러 보세요.</div>';return;}
+  const order={accident:0,overdue:1,ok:2};
+  A=[...A].sort((a,b)=>order[status(a)]-order[status(b)]||a.start-b.start);
+  cards.innerHTML=A.map(w=>{
+    const T=TYPES[w.type],st=status(w),inj=(w.accident&&w.accident.injured)||[];
+    return `<div class="card ${st}">${chipHtml(w)}
+      <div class="ch"><span class="tag" style="background:${T.color}">${esc(T.name)}</span><b>${esc(zoneName(w.zone))}</b><span class="pill ${st}">${ST_LABEL[st]}</span></div>
+      <div class="sub">${esc(w.spot||'-')} · ${esc(w.ptw||'PTW 미기재')}</div>
+      <div class="sub">감독자 <b style="color:var(--ink)">${esc(w.sup||'-')}</b> · ${esc(w.tel||'-')}</div>
+      <div class="people">${w.workers.map((p,i)=>`<span class="pp ${inj.includes(i)?'inj':''}">${esc(p.name)}<small>${esc(p.role)}</small></span>`).join('')}</div>
+      <div class="times"><span>시작 ${hhmm(w.start)} · 경과 <b data-el="${w.start}"></b>${w.endPlan?` · 예정 ${esc(w.endPlan)}`:''}</span><span>다음 점검 <b data-due="${w.id}"></b></span></div>
+      <div class="btns">
+        ${st==='accident'?`<button class="danger" onclick="showAlarm(true)">사고 대응 화면</button>`:
+        `<button class="ok" onclick="checkIn('${w.id}')">✔ 점검 확인</button>
+         <button onclick="finish('${w.id}')">작업 종료</button>
+         <button class="danger" onclick="openAccident('${w.id}')">🚨 사고</button>`}
+      </div></div>`;
+  }).join('');
+}
+function renderLog(){
+  log.innerHTML=S.log.map(l=>`<div class="${l.level}"><span class="t">${new Date(l.t).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})}</span>${esc(l.msg)}</div>`).join('')||'<div class="hint">기록 없음</div>';
+}
+function renderAlarm(){
+  const acc=active().filter(w=>status(w)==='accident');
+  alarmbar.classList.toggle('show',acc.length>0&&!alarmOpen);
+  alarm.classList.toggle('show',acc.length>0&&alarmOpen);
+  alarmbarText.textContent=acc.length?`🚨 사고 진행 중: ${acc.map(w=>TYPES[w.type].name+' @ '+zoneName(w.zone)).join(', ')}`:'';
+  alarmList.innerHTML=acc.map(w=>{
+    const T=TYPES[w.type],a=w.accident;
+    return `<div class="abox">
+      <div class="ahead"><div class="big">🚨 ${esc(T.name)} 사고 — ${esc(zoneName(w.zone))}</div>
+        <div>${esc(w.spot||'')} · 발령 ${hhmm(a.t)} (<b data-el="${a.t}"></b> 경과) · 감독자 ${esc(w.sup||'-')} / ${esc(w.tel||'-')}</div></div>
+      <div class="abody">
+        <div>
+          <h4>현장 인원 (${w.workers.length}명)</h4>
+          <div class="people">${w.workers.map((p,i)=>`<span class="pp ${a.injured.includes(i)?'inj':''}">${a.injured.includes(i)?'🩹 ':''}${esc(p.name)}<small>${esc(p.role)}</small></span>`).join('')}</div>
+          ${a.memo?`<h4>상황</h4><div>${esc(a.memo)}</div>`:''}
+          <h4 style="margin-top:12px">주요 위험</h4><div class="sub">${esc(T.hazards)}</div>
+        </div>
+        <div>
+          <h4>즉시 대응 절차</h4>
+          ${T.guide.map((g,i)=>{const d=a.steps[i];return `<label class="step ${d?'done':''}"><input type="checkbox" ${d?'checked':''} onchange="step('${w.id}',${i},this.checked)"><span>${i+1}. ${esc(g)}</span>${d?`<small>✔ ${hhmm(d)}</small>`:''}</label>`;}).join('')}
+        </div>
+      </div>
+      <div class="afoot">
+        <button onclick="toggleMute()">${muted?'🔔 경보음 켜기':'🔕 경보음 끄기'}</button>
+        <button onclick="showAlarm(false)">화면 최소화</button>
+        <button class="ok" onclick="resolve('${w.id}')">상황 종료 (작업 중지)</button>
+      </div></div>`;
+  }).join('');
+  syncSound();
+}
+
+/* ---------- CHIPPING 작업·휴식 시간 (50분 작업 → 10분 휴식) ---------- */
+const CHIP_WORK=50, CHIP_REST=10;
+function chipState(w){
+  const t=now();
+  if(w.restUntil&&t<w.restUntil)return{mode:'rest',left:w.restUntil-t};
+  const el=t-(w.cycleStart||w.start);
+  return{mode:el>=CHIP_WORK*60000?'due':'work',el};
+}
+function chipHtml(w){
+  if(w.type!=='CHIPPING')return'';
+  return `<div class="chip" data-chip="${w.id}"><span class="ct"></span><span class="bar"><i></i></span><button onclick="startRest('${w.id}')">휴식 시작 (${CHIP_REST}분)</button></div>`;
+}
+function updateChips(){
+  active().forEach(w=>{  // 상태가 바뀌는 순간에만 기록·알림
+    if(w.type!=='CHIPPING')return;
+    if(w.restUntil&&now()>=w.restUntil){w.cycleStart=w.restUntil;w.restUntil=null;w.restWarned=false;addLog('',`CHIPPING 휴식 끝 → 작업 재개: ${zoneName(w.zone)} ${w.spot}`);save();renderLog();}
+    if(chipState(w).mode==='due'&&!w.restWarned){w.restWarned=true;addLog('warn',`⏰ CHIPPING 휴식 시간: ${zoneName(w.zone)} ${w.spot} — ${CHIP_WORK}분 작업 완료, ${CHIP_REST}분 휴식`);beep(660,.3);save();renderLog();}
+  });
+  document.querySelectorAll('[data-chip]').forEach(e=>{
+    const w=W(e.dataset.chip);if(!w)return;
+    const c=chipState(w),txt=e.querySelector('.ct'),bar=e.querySelector('.bar i'),btn=e.querySelector('button');
+    e.className='chip '+c.mode;
+    btn.style.display=c.mode==='due'?'':'none';
+    if(c.mode==='rest'){txt.textContent=`☕ 휴식 중 · ${Math.ceil(c.left/60000)}분 남음`;bar.style.width=(100*(1-c.left/(CHIP_REST*60000)))+'%';}
+    else if(c.mode==='due'){const over=c.el-CHIP_WORK*60000;txt.textContent=`⏰ 휴식 시간 — ${CHIP_WORK}분 작업 완료${over>=60000?` (${dur(over)} 초과)`:''}`;bar.style.width='100%';}
+    else{txt.textContent=`⏱ 작업 ${Math.floor(c.el/60000)}분 / ${CHIP_WORK}분 · 휴식까지 ${Math.ceil((CHIP_WORK*60000-c.el)/60000)}분`;bar.style.width=(100*c.el/(CHIP_WORK*60000))+'%';}
+  });
+}
+function startRest(id){
+  const w=W(id);w.restUntil=now()+CHIP_REST*60000;
+  addLog('',`☕ CHIPPING 휴식 시작: ${zoneName(w.zone)} ${w.spot} — ${CHIP_REST}분 (${hhmm(w.restUntil)}까지)`);
+  save();render();
+}
+
+/* ---------- 1초 갱신 ---------- */
+function sig(){return active().map(w=>w.id+status(w)).join('|');}
+function tick(){
+  clock.textContent=new Date().toLocaleTimeString('ko-KR',{hour12:false});
+  updateChips();
+  document.querySelectorAll('[data-el]').forEach(e=>e.textContent=dur(now()-(+e.dataset.el)));
+  document.querySelectorAll('[data-due]').forEach(e=>{
+    const w=S.works.find(x=>x.id===e.dataset.due);if(!w)return;
+    const left=w.lastCheck+w.interval*60000-now();
+    if(left>=0){e.textContent=Math.ceil(left/60000)+'분 후';e.className='';}
+    else{e.textContent='⚠ '+dur(-left)+' 지연';e.className='due-late';}
+  });
+  const s=sig();
+  if(s!==lastSig){
+    active().forEach(w=>{
+      if(status(w)==='overdue'&&!w.overdueLogged){w.overdueLogged=true;addLog('warn',`점검 지연: ${TYPES[w.type].name} @ ${zoneName(w.zone)} (감독자 ${w.sup||'-'}) — 현장 교신 필요`);beep(520,.4);}
+    });
+    save();render();
+  }
+}
+
+/* ---------- 작업 등록 ---------- */
+function openForm(){
+  fType.innerHTML=Object.entries(TYPES).map(([k,t])=>`<option value="${k}">${t.name}</option>`).join('');
+  fZone.innerHTML=ZONES.map(z=>`<option value="${z.id}">${z.name}</option>`).join('');
+  ['fSpot','fPtw','fSup','fTel','fEnd','fWorkers'].forEach(id=>document.getElementById(id).value='');
+  onTypeChange();formBg.classList.add('show');
+}
+function onTypeChange(){const t=TYPES[fType.value];fInt.value=t.interval;fHaz.textContent='주요 위험: '+t.hazards;}
+function parseWorkers(txt){return txt.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const [n,...r]=l.split(/[,，\/]/);return{name:n.trim(),role:r.join(',').trim()};});}
+function saveForm(){
+  const workers=parseWorkers(fWorkers.value);
+  if(!workers.length){alert('작업자를 한 명 이상 입력해 주세요.');return;}
+  const w={id:uid(),type:fType.value,zone:fZone.value,spot:fSpot.value.trim(),ptw:fPtw.value.trim(),sup:fSup.value.trim(),tel:fTel.value.trim(),
+    interval:Math.max(1,+fInt.value||15),endPlan:fEnd.value,workers,start:now(),lastCheck:now(),state:'active'};
+  S.works.push(w);
+  addLog('',`작업 시작: ${TYPES[w.type].name} @ ${zoneName(w.zone)} ${w.spot} — ${workers.length}명 (${workers.map(p=>p.name).join(', ')})`);
+  save();closeModal('formBg');render();
+}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+
+/* ---------- 작업 조작 ---------- */
+const W=id=>S.works.find(w=>w.id===id);
+function checkIn(id){const w=W(id);w.lastCheck=now();w.overdueLogged=false;addLog('',`점검 확인: ${TYPES[w.type].name} @ ${zoneName(w.zone)} — 이상 없음`);save();render();}
+function finish(id){
+  const w=W(id);if(!confirm(`${TYPES[w.type].name} @ ${zoneName(w.zone)} 작업을 종료할까요?\n(인원 ${w.workers.length}명 철수 확인)`))return;
+  w.state='done';w.end=now();addLog('',`작업 종료: ${TYPES[w.type].name} @ ${zoneName(w.zone)} — 소요 ${dur(w.end-w.start)}, 인원 철수`);save();render();
+}
+function openAccident(id){
+  accTarget=id;const w=W(id);
+  accInfo.textContent=`${TYPES[w.type].name} · ${zoneName(w.zone)} ${w.spot}`;
+  accWorkers.innerHTML=w.workers.map((p,i)=>`<label class="chk"><input type="checkbox" value="${i}">${esc(p.name)} <span class="hint">${esc(p.role)}</span></label>`).join('');
+  accMemo.value='';accBg.classList.add('show');
+}
+function fireAccident(){
+  const w=W(accTarget);
+  const injured=[...accWorkers.querySelectorAll('input:checked')].map(c=>+c.value);
+  w.accident={t:now(),injured,memo:accMemo.value.trim(),steps:{},resolved:false};
+  const names=injured.map(i=>w.workers[i].name).join(', ')||'미지정';
+  addLog('bad',`🚨 사고 발령: ${TYPES[w.type].name} @ ${zoneName(w.zone)} ${w.spot} — 관련 인원: ${names}${w.accident.memo?' / '+w.accident.memo:''}`);
+  muted=false;alarmOpen=true;save();closeModal('accBg');render();
+}
+function step(id,i,on){
+  const w=W(id),T=TYPES[w.type];
+  if(on){w.accident.steps[i]=now();addLog('bad',`대응 조치 완료: [${T.name}] ${i+1}. ${T.guide[i]}`);}
+  else delete w.accident.steps[i];
+  save();renderAlarm();tick();
+}
+function resolve(id){
+  const w=W(id);if(!confirm('사고 상황을 종료하고 해당 작업을 중지 처리할까요?'))return;
+  w.accident.resolved=true;w.accident.end=now();w.state='stopped';w.end=now();
+  addLog('bad',`사고 상황 종료: ${TYPES[w.type].name} @ ${zoneName(w.zone)} — 대응 소요 ${dur(w.end-w.accident.t)}, 작업 중지`);
+  save();render();
+}
+function showAlarm(open){alarmOpen=open;renderAlarm();tick();}
+function toggleMute(){muted=!muted;renderAlarm();tick();}
+
+/* ---------- 경보음 ---------- */
+let actx=null,alarmTimer=null;
+function beep(f,d){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.type='square';o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d);}catch(e){}}
+function syncSound(){
+  const need=active().some(w=>status(w)==='accident')&&!muted;
+  if(need&&!alarmTimer)alarmTimer=setInterval(()=>{beep(880,.25);setTimeout(()=>beep(660,.25),320);},1000);
+  if(!need&&alarmTimer){clearInterval(alarmTimer);alarmTimer=null;}
+}
+
+/* ---------- 예시 데이터 ---------- */
+function loadSample(){
+  if(active().length&&!confirm('예시 작업 3건을 추가할까요?'))return;
+  const t=now(),m=60000;
+  const ex=[
+    {type:'MOORING',zone:'FWD',spot:'선수 좌현 No.1/2 윈치',ptw:'PTW-1014-01',sup:'김일항 / 1항사',tel:'무전 CH 6',interval:10,start:t-12*m,lastCheck:t-4*m,
+      workers:[['김일항','1항사'],['최갑장','갑판장'],['이AB','AB'],['박AB','AB'],['정OS','OS']]},
+    {type:'CHIPPING',zone:'MAIN',spot:'No.3 해치커버 우현',ptw:'PTW-1014-02',sup:'최갑장 / 갑판장',tel:'무전 CH 8',interval:30,start:t-50*m,lastCheck:t-33*m,
+      workers:[['한AB','AB'],['윤OS','OS'],['강OS','OS']]},
+    {type:'ENCLOSED',zone:'PUMP',spot:'카고펌프룸 하부',ptw:'PTW-1014-03',sup:'오일기 / 1기사',tel:'무전 CH 10',interval:10,start:t-6*m,lastCheck:t-2*m,
+      workers:[['오일기','1기사'],['서조기','조기장'],['문감시','입구 감시자']]}
+  ];
+  ex.forEach(e=>{
+    const w={id:uid(),...e,endPlan:'',state:'active',workers:e.workers.map(([name,role])=>({name,role}))};
+    S.works.push(w);addLog('',`작업 시작: ${TYPES[w.type].name} @ ${zoneName(w.zone)} ${w.spot} — ${w.workers.length}명`);
+  });
+  save();render();
+}
+
+ship.addEventListener('change',()=>{S.ship=ship.value.trim()||'선박명';save();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal('formBg');closeModal('accBg');}});
+render();setInterval(tick,1000);
+</script>
+</body>
+</html>

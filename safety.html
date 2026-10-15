@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>위험작업 AI 모니터링</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f2f4f7; --card:#fff; --ink:#152033; --sub:#5a6577; --line:#e2e6ec; --track:#edf0f4;
+  --navy:#0c2340; --blue:#2a6fd6; --purple:#7b4fd6; --green:#16915a; --orange:#e07b16; --red:#d23b3b; --gray:#8a93a3;
+  --blue-w:#e9f1fd; --purple-w:#f2edfc; --green-w:#e6f5ed; --orange-w:#fdf1e4; --red-w:#fdeaea;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;font-size:16px;line-height:1.5}
+header{background:var(--navy);color:#fff;padding:18px 28px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+header h1{margin:0;font-size:26px}
+header .tag{font-size:14px;opacity:.85}
+header .demo{margin-left:auto;background:#fff;color:var(--navy);text-decoration:none;font-weight:700;padding:8px 14px;border-radius:8px;font-size:15px}
+main{max-width:1280px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.card h2{margin:0 0 4px;font-size:19px}
+.card .d{margin:0 0 14px;color:var(--sub);font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-top:5px solid var(--c)}
+.kpi small{color:var(--sub);font-size:14px;display:block}
+.kpi b{font-size:34px;display:block;margin:4px 0 2px;color:var(--c)}
+.kpi span{font-size:14px;color:var(--sub)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* AI 흐름 */
+.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}
+.step{flex:1 1 150px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--w);border-top:5px solid var(--c)}
+.step .n{font-size:13px;color:var(--sub)}
+.step b{display:block;font-size:17px;margin:2px 0}
+.step .m{font-size:14px}
+.chip{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;color:#fff;background:var(--c);margin-top:6px}
+.arr{align-self:center;color:var(--gray);font-size:22px}
+
+/* 막대 */
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:170px 1fr 56px;align-items:center;gap:10px;font-size:15px}
+.bar .t{height:24px;background:var(--track);border-radius:6px;overflow:hidden}
+.bar .f{height:100%;background:var(--c);border-radius:6px}
+.bar .v{font-weight:700;text-align:right}
+.bar.hl .l{font-weight:700}
+.note{margin-top:12px;padding:10px 12px;background:var(--blue-w);border-radius:8px;font-size:15px}
+.note.warn{background:var(--orange-w)}
+
+/* 전후 비교 */
+.ba{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center}
+.ba div{border-radius:10px;padding:12px}
+.ba .bf{background:var(--track)}
+.ba .af{background:var(--green-w)}
+.ba b{font-size:30px;display:block}
+.ba small{color:var(--sub);font-size:14px}
+
+/* 작업 카드 */
+.works{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.w{border:1px solid var(--line);border-radius:10px;padding:12px;border-left:5px solid var(--c)}
+.w b{font-size:16px;display:block}
+.w p{margin:4px 0 0;font-size:14px;color:var(--sub)}
+
+ul.clean{margin:0;padding-left:20px}
+ul.clean li{margin:4px 0}
+.ok{color:var(--green);font-weight:700}
+.no{color:var(--red);font-weight:700}
+.lesson{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.lesson div{background:var(--purple-w);border-radius:10px;padding:14px;font-size:15px}
+.lesson b{display:block;font-size:17px;margin-bottom:4px;color:var(--purple)}
+footer{text-align:center;color:var(--sub);font-size:13px;padding-bottom:20px}
+
+@media (max-width:900px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .two,.lesson{grid-template-columns:1fr}
+  .works{grid-template-columns:1fr 1fr}
+  .arr{display:none}
+  .bar{grid-template-columns:120px 1fr 48px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚓ 선박 위험작업 AI 모니터링</h1>
+  <span class="tag">CCTV 영상 → 딥러닝 4종 + 안전 규칙 · 2026-10</span>
+  <a class="demo" href="monitor.html">현장 대시보드 열기 →</a>
+</header>
+
+<main>
+  <!-- 핵심 숫자 -->
+  <section class="kpis">
+    <div class="kpi" style="--c:var(--purple)"><small>작업 종류 판단 (CLIP)</small><b>89%</b><span>직접 학습 79%보다 높음</span></div>
+    <div class="kpi" style="--c:var(--green)"><small>안전모 판정 (사람 단위)</small><b>96%</b><span>규칙 추가 전 79%</span></div>
+    <div class="kpi" style="--c:var(--blue)"><small>같은 사람 추적 ID 수</small><b>32 → 6</b><span>ReID로 ID 끊김 감소</span></div>
+    <div class="kpi" style="--c:var(--orange)"><small>밀폐구역 자동 진입 감지</small><b>3 / 3</b><span>시험 3회 모두 1건 정확 · 34.3초</span></div>
+  </section>
+
+  <!-- AI 흐름 -->
+  <section class="card">
+    <h2>AI 구성 — 어떤 AI를 어디에 썼나</h2>
+    <p class="d">사전학습 모델 3개 + 직접 학습 1개 + 안전 규칙</p>
+    <div class="flow">
+      <div class="step" style="--c:var(--gray);--w:#f6f7f9"><span class="n">입력</span><b>📷 CCTV</b><span class="m">방폭 카메라 영상</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--blue);--w:var(--blue-w)"><span class="n">①</span><b>사람 찾기·추적</b><span class="m">YOLO11m + BoT-SORT·ReID</span><br><span class="chip">지도학습 · 그대로 사용</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--blue);--w:var(--blue-w)"><span class="n">②</span><b>자세 추정</b><span class="m">YOLO11m-pose · 머리·손목 위치</span><br><span class="chip">지도학습 · 그대로 사용</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--purple);--w:var(--purple-w)"><span class="n">③</span><b>작업 종류</b><span class="m">CLIP · 사진↔문장 비교</span><br><span class="chip">제로샷 · 학습 없음</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--green);--w:var(--green-w)"><span class="n">④</span><b>보호구</b><span class="m">YOLO11m-PPE · 안전모·보안경·장갑</span><br><span class="chip">전이학습 · 직접 학습</span></div>
+      <span class="arr">→</span>
+      <div class="step" style="--c:var(--orange);--w:var(--orange-w)"><span class="n">⑤</span><b>안전 규칙</b><span class="m">IMO MSC.581 · 회사 30분</span><br><span class="chip">규칙 기반</span></div>
+    </div>
+  </section>
+
+  <section class="two">
+    <!-- 작업 분류 비교 -->
+    <div class="card">
+      <h2>작업 종류 판단 — 방법별 정확도</h2>
+      <p class="d">선박 작업 영상 21개 · 같은 시험 조건</p>
+      <div class="bars">
+        <div class="bar" style="--c:var(--gray)"><span class="l">직접 학습 (YOLO-cls)</span><span class="t"><span class="f" style="display:block;width:79%"></span></span><span class="v">79%</span></div>
+        <div class="bar" style="--c:#b9a3ea"><span class="l">CLIP · 선박 용어 문장</span><span class="t"><span class="f" style="display:block;width:59%"></span></span><span class="v">59%</span></div>
+        <div class="bar" style="--c:#9a7be0"><span class="l">CLIP · 단순 묘사</span><span class="t"><span class="f" style="display:block;width:75%"></span></span><span class="v">75%</span></div>
+        <div class="bar hl" style="--c:var(--purple)"><span class="l">CLIP · 구체적 시각 묘사</span><span class="t"><span class="f" style="display:block;width:89%"></span></span><span class="v">89%</span></div>
+      </div>
+      <div class="note"><b>배운 점:</b> 데이터가 적을 땐 직접 학습보다 <b>사전학습 지식</b>이 낫다.<br>단, 문장을 어떻게 쓰느냐에 따라 59~89%로 크게 달라짐.</div>
+    </div>
+
+    <!-- PPE -->
+    <div class="card">
+      <h2>보호구 탐지 — 직접 학습 결과 (mAP50)</h2>
+      <p class="d">Construction-PPE 데이터 · YOLO11m 전이학습 v3</p>
+      <div class="bars">
+        <div class="bar" style="--c:var(--green)"><span class="l">안전모 착용</span><span class="t"><span class="f" style="display:block;width:91.8%"></span></span><span class="v">.918</span></div>
+        <div class="bar" style="--c:var(--green)"><span class="l">보안경 착용</span><span class="t"><span class="f" style="display:block;width:82.6%"></span></span><span class="v">.826</span></div>
+        <div class="bar" style="--c:var(--green)"><span class="l">장갑 착용</span><span class="t"><span class="f" style="display:block;width:72.3%"></span></span><span class="v">.723</span></div>
+        <div class="bar" style="--c:var(--red)"><span class="l">장갑 미착용</span><span class="t"><span class="f" style="display:block;width:3.8%"></span></span><span class="v">.038</span></div>
+      </div>
+      <div class="ba" style="margin-top:14px">
+        <div class="bf"><small>모델만</small><b>79%</b><small>안전모 사람 단위</small></div>
+        <span style="font-size:22px;color:var(--gray)">→</span>
+        <div class="af"><small>+ "크게 보이는데 안전모 없음 = 미착용" 규칙</small><b style="color:var(--green)">96%</b><small>안전모 사람 단위</small></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 작업별 규칙 -->
+  <section class="card">
+    <h2>작업 종류별 안전 규칙</h2>
+    <p class="d">AI가 작업을 판단하면 그 작업에 맞는 규칙이 자동 적용</p>
+    <div class="works">
+      <div class="w" style="--c:var(--blue)"><b>ALOFT</b><p>고소작업<br>하네스 필수</p></div>
+      <div class="w" style="--c:var(--red)"><b>HOT WORK</b><p>불꽃 감지<br>무허가 화기 경보</p></div>
+      <div class="w" style="--c:var(--orange)"><b>ENCLOSED</b><p>맨홀 자동 진입 감지<br>30분 타이머 · 가스 재측정</p></div>
+      <div class="w" style="--c:var(--green)"><b>MOORING</b><p>계류 작업<br>장갑 필수</p></div>
+      <div class="w" style="--c:var(--purple)"><b>CHIPPING</b><p>50분 작업<br>10분 휴식</p></div>
+    </div>
+  </section>
+
+  <section class="two">
+    <div class="card">
+      <h2>된 것 / 남은 과제</h2>
+      <p class="d">확인 안 된 건 초록으로 표시하지 않는 것이 원칙</p>
+      <ul class="clean">
+        <li><span class="ok">✔</span> 사람 추적 · 구역별 인원 · 위험구역 경보</li>
+        <li><span class="ok">✔</span> 밀폐구역 진입 자동 감지 · IMO 가스 기준(O₂ 20.9%, LFL 1% 미만)</li>
+        <li><span class="ok">✔</span> 볼라드를 사람으로 오인 → 확신도 조건으로 해결</li>
+        <li><span class="no">✘</span> 장갑 <b>미착용</b> 탐지 거의 못 함 (.038)</li>
+        <li><span class="no">✘</span> BA(공기호흡기) 마스크 인식 부족 → 작업복+BA 데이터 필요</li>
+        <li><span class="no">✘</span> 실제 선박 CCTV로 아직 미검증</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>시행착오에서 배운 것</h2>
+      <p class="d">실패한 시도도 결과로 기록</p>
+      <ul class="clean">
+        <li>소방 영상으로 BA 학습 → <b>방화복 vs 작업복</b>을 배워버림 (11명 중 3명)</li>
+        <li>'작업 없음' 문장이 없으면 걷는 장면을 전부 HOT으로 오판</li>
+        <li>햇빛 반사 → 불꽃 오경보 → CLIP 판정 2회 이상일 때만 인정</li>
+        <li>실시간 모드는 실행마다 결과가 다름 → 시연은 <b>모든 장면 분석</b> 모드</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="lesson">
+    <div><b>① 사전학습 모델 활용</b>데이터 21개로는 직접 학습보다 CLIP 제로샷이 10%p 높음</div>
+    <div><b>② AI + 규칙 결합</b>모델만 79% → 간단한 규칙 하나로 96%</div>
+    <div><b>③ 데이터가 핵심</b>틀린 데이터는 틀린 것을 배움 — 현장 영상 확보가 다음 단계</div>
+  </section>
+</main>
+<footer>지표 출처: 프로젝트 시험 기록 (2026-10-14 ~ 15) · 공개 영상(Pexels) 기준</footer>
+</body>
+</html>
